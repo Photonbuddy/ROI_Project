@@ -1,33 +1,121 @@
-
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Import the 2 screens that we will be using
 import StaffDirectory from './screens/StaffDirectory';
 import UpdateStaff from './screens/UpdateStaff';
+
+// Import the CSV data for Departments and Staff
+
+import { initialDepartmentsCSV, parseDepartmentCSV } from './src/departments';
+import { staff as initialStaff } from './src/Staff';
+
+const DEPT_KEY = '@departments_data';
+const STAFF_KEY = '@staff_directory_data';
+
 const Stack = createNativeStackNavigator();
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, Pressable, TouchableOpacity } from 'react-native';
 
 const App = () => {
-  const [hideSplashScreen, setHideSplashScreen] = React.useState(true);
+  const [masterDepartments, setMasterDepartments] = useState([]);
+  const [masterStaff, setMasterStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const bootstrapData = async () => {
+      try {
+        // 1. Fetch Departments
+        const storedDepts = await AsyncStorage.getItem(DEPT_KEY);
+        if (storedDepts) {
+          setMasterDepartments(JSON.parse(storedDepts));
+        } else {
+          const parsedDepts = parseDepartmentCSV(initialDepartmentsCSV);
+          await AsyncStorage.setItem(DEPT_KEY, JSON.stringify(parsedDepts));
+          setMasterDepartments(parsedDepts);
+        }
+
+        // 2. Fetch Staff
+        const storedStaff = await AsyncStorage.getItem(STAFF_KEY);
+        if (storedStaff) {
+          setMasterStaff(JSON.parse(storedStaff));
+        } else {
+          await AsyncStorage.setItem(STAFF_KEY, JSON.stringify(initialStaff));
+          setMasterStaff(initialStaff);
+        }
+      } catch (error) {
+        console.error("AsyncStorage Bootup Error: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    bootstrapData();
+  }, []);
+
+  // Universal handler to save an added or edited staff member
+  const handleSaveStaff = async (updatedMember) => {
+    try {
+      let updatedList = [];
+      const exists = masterStaff.some(s => s.id === updatedMember.id);
+      
+      if (exists) {
+        updatedList = masterStaff.map(s => s.id === updatedMember.id ? updatedMember : s);
+      } else {
+        updatedList = [...masterStaff, updatedMember];
+      }
+
+      setMasterStaff(updatedList);
+      await AsyncStorage.setItem(STAFF_KEY, JSON.stringify(updatedList));
+    } catch (error) {
+      console.error("Failed to persist updated staff member: ", error);
+    }
+  };
+
+  // This code shows a loading wheel while loading the Staff directory
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#941a1d" />
+        <Text style={{ marginTop: 10, color: '#333' }}>Loading Directory Data...</Text>
+      </View>
+    );
+  }
 
   return (
-    <>
-      <SafeAreaProvider>
-        <NavigationContainer>
-          {hideSplashScreen ? (
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen
-                name="UpdateStaff"
-                component={UpdateStaff}
-                options={{ headerShown: false }}
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          
+          {/* 1. Staff Directory Screen */}
+          <Stack.Screen name="StaffDirectory">
+            {(props) => (
+              <StaffDirectory 
+                {...props} 
+                staffList={masterStaff} 
+                departments={masterDepartments} 
               />
-            </Stack.Navigator>
-          ) : null}
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </>
+            )}
+          </Stack.Screen>
+
+          {/* 2. Update Staff Screen */}
+          <Stack.Screen name="UpdateStaff">
+            {(props) => (
+              <UpdateStaff 
+                {...props} 
+                staffList={masterStaff} 
+                departments={masterDepartments} 
+                onSave={handleSaveStaff}
+              />
+            )}
+          </Stack.Screen>
+
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 };
+
 export default App;

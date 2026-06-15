@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,29 @@ import {
   ScrollView,
 } from 'react-native';
 
-export default function StaffDirectory() {
+export default function StaffDirectory({ navigation, staffList, departments }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const getDepartmentName = (deptId) => {
+    const dept = departments.find((d) => d.id === String(deptId));
+    return dept ? dept.name : 'Unknown Department';
+  };
+
+  const filteredStaff = staffList.filter((member) => {
+    const query = searchQuery.toLowerCase();
+    const staffName = (member.name || '').toLowerCase();
+    const deptName = getDepartmentName(member.departmentId).toLowerCase();
+
+    return staffName.includes(query) || deptName.includes(query);
+  });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Background */}
+    <View style={styles.container}>
       <ImageBackground
         source={require('../assets/AppBackground.jpg')}
         style={styles.background}
         resizeMode="repeat">
-        {/* HEADER */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.navIcons}>
             <Image source={require('../assets/Home.png')} style={styles.icon} />
@@ -27,7 +41,6 @@ export default function StaffDirectory() {
               style={styles.icon}
             />
           </View>
-
           <Image
             source={require('../assets/ROILogo.png')}
             style={styles.logo}
@@ -35,46 +48,84 @@ export default function StaffDirectory() {
           />
         </View>
 
-        {/* TITLE */}
         <Text style={styles.title}>Staff Directory</Text>
 
-        {/* SEARCH BAR */}
-        <View style={styles.card}>
+        {/* Search Bar */}
+        <View style={styles.cardSearch}>
           <View style={styles.searchBar}>
             <TextInput
               placeholder="Search staff..."
               placeholderTextColor="#999"
               style={styles.input}
+              value={searchQuery}
+              onChangeText={(text) => setSearchQuery(text)}
             />
           </View>
-          <View style={styles.searchIcon}>
+          <View style={styles.searchIconContainer}>
             <Image
               source={require('../assets/search_glass.png')}
               style={styles.searchIcon}
             />
           </View>
         </View>
-        {/* STAFF CARD PLACEHOLDER */}
-        <View style={styles.card}>
-          <Text style={styles.cardText}>Staff Name Placeholder</Text>
-        </View>
 
-        {/* ADD BUTTON */}
-        <Pressable style={styles.button}>
+        {/* Create a scrolling panel that scrolls the staff directory*/}
+        <ScrollView
+          style={styles.scrollPanel}
+          contentContainerStyle={styles.scrollContent}
+          pagingEnabled={false}
+          snapToStart={true}
+          snapToEnd={true}
+          disableIntervalMomentum={true} // Stops the scroll from flying past multiple cards
+          snapToInterval={95} // Set the height of each interval for the scroll
+          decelerationRate="fast"
+          snapToAlignment="start">
+          {filteredStaff.length > 0 ? (
+            filteredStaff.map((item) => (
+              <Pressable
+                key={item.id}
+                style={styles.card}
+                onPress={() =>
+                  navigation.navigate('UpdateStaff', {
+                    employeeId: item.id,
+                    departments: departments,
+                    staffList: staffList,
+                  })
+                }>
+                <Text style={styles.cardTextName}>{item.name}</Text>
+                <Text style={styles.cardTextDet}>
+                  {getDepartmentName(item.departmentId)}
+                </Text>
+                <Text style={styles.cardTextDet}>{item.phone}</Text>
+              </Pressable>
+            ))
+          ) : (
+            <View style={styles.noResultsCard}>
+              <Text style={styles.noResultsText}>No matching staff found.</Text>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Add Staff button */}
+        <Pressable
+          style={styles.button}
+          onPress={() =>
+            navigation.navigate('UpdateStaff', {
+              employeeId: null,
+              departments: departments,
+            })
+          }>
           <Text style={styles.buttonText}>Add Staff</Text>
         </Pressable>
       </ImageBackground>
-    </ScrollView>
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-  },
-
-  content: {
-    flexGrow: 1,
   },
 
   background: {
@@ -86,7 +137,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
 
   navIcons: {
@@ -100,16 +151,27 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    width: 300,
-    height: 157,
+    width: 316,
+    height: 165,
   },
 
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
     color: '#fff',
+  },
+
+  cardSearch: {
+    flexDirection: 'row',
+    backgroundColor: '#941a1d',
+    padding: 8,
+    borderRadius: 25,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 10,
+    height: 48,
   },
 
   searchBar: {
@@ -118,41 +180,81 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     paddingHorizontal: 4,
-    /*marginBottom: 20,*/
-    width: '88%',
-    minheight: 32,
+    flex: 7,
+    height: 32,
   },
 
   input: {
-    flex: 1,
-    height: 32,
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    alignItems: 'center',
     paddingHorizontal: 4,
-    alignSelf: 'stretch',
+    flex: 1,
+    minHeight: 26,
+    marginLeft: 4,
+  },
+
+  searchIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 7,
   },
 
   searchIcon: {
-    width: 24,
+    width: 28,
     height: 24,
-    marginLeft: 4,
+    tintColor: '#fff',
+  },
+
+   scrollPanel: {
+    maxHeight: 475,
+    flexGrow: 0,
+    marginBottom: 15,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 4,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  card: {
+    flexDirection: 'column',
+    backgroundColor: '#941a1d',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    height: 85,
+  },
+
+  cardTextName: {
+    color: '#fff',
+    marginLeft: 15,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+
+  cardTextDet: {
+    color: '#fff',
+    marginLeft: 15,
+    fontSize: 14,
     marginTop: 2,
   },
 
-  card: {
-    flexDirection: 'row',
+  noResultsCard: {
     backgroundColor: '#941a1d',
-    padding: 8,
-    borderRadius: 25,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-    height: 48,
+    padding: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+    marginBottom: 10,
   },
 
-  cardText: {
+  noResultsText: {
     color: '#fff',
-    textAlign: 'center',
-    marginTop: 4,
-    marginLeft: 4,
+    fontSize: 16,
+    fontStyle: 'italic',
   },
 
   button: {
@@ -160,10 +262,12 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 25,
     alignItems: 'center',
+    marginBottom: 15,
   },
 
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 20,
   },
 });
