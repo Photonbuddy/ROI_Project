@@ -1,4 +1,4 @@
-// 1. Export the raw data with quotes (Exactly what App.js wants)
+// Export the raw data with quotes (Exactly what App.js wants)
 export const initialDepartmentsCSV = `"id","name"
 "0","General"
 "1","Information Communications Technology"
@@ -7,7 +7,7 @@ export const initialDepartmentsCSV = `"id","name"
 "4","Human Resources"`;
 
 /**
- * 2. Export the parser function (Exactly what App.js wants)
+ * Export the parser function (Exactly what App.js wants)
  * Parses raw CSV string, automatically removing surrounding quotes and whitespace.
  */
 export const parseDepartmentCSV = (csvText) => {

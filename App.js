@@ -27,7 +27,7 @@ const App = () => {
   useEffect(() => {
     const bootstrapData = async () => {
       try {
-        // 1. Fetch Departments
+        // Fetch Departments
         const storedDepts = await AsyncStorage.getItem(DEPT_KEY);
         if (storedDepts) {
           setMasterDepartments(JSON.parse(storedDepts));
@@ -37,7 +37,7 @@ const App = () => {
           setMasterDepartments(parsedDepts);
         }
 
-        // 2. Fetch Staff
+        // Fetch Staff
         const storedStaff = await AsyncStorage.getItem(STAFF_KEY);
         if (storedStaff) {
           setMasterStaff(JSON.parse(storedStaff));
@@ -74,22 +74,13 @@ const App = () => {
     }
   };
 
-  // This code shows a loading wheel while loading the Staff directory
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#941a1d" />
-        <Text style={{ marginTop: 10, color: '#333' }}>Loading Directory Data...</Text>
-      </View>
-    );
-  }
 
   return (
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           
-          {/* 1. Staff Directory Screen */}
+          {/* Staff Directory Screen */}
           <Stack.Screen name="StaffDirectory">
             {(props) => (
               <StaffDirectory 
@@ -100,7 +91,7 @@ const App = () => {
             )}
           </Stack.Screen>
 
-          {/* 2. Update Staff Screen */}
+          {/* Update Staff Screen */}
           <Stack.Screen name="UpdateStaff">
             {(props) => (
               <UpdateStaff 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,50 @@ import {
   Image,
   ImageBackground,
   ScrollView,
+  Platform,
+  useWindowDimensions,
+  FlatList,
 } from 'react-native';
 
-export default function StaffDirectory({ navigation, staffList, departments }) {
+export default function StaffDirectory({
+  route,
+  navigation,
+  staffList,
+  departments,
+}) {
+  // These 2 lines setup our tablet mode with 2 columns
+  const { width } = useWindowDimensions();
+  const isTablet = width > 600;
+
+  const [currentStaff, setCurrentStaff] = useState(staffList || []);
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    if (staffList) {
+      setCurrentStaff(staffList);
+    }
+  }, [staffList]);
+
+  // Catch the incoming data coming back from UpdateStaff.js
+  useEffect(() => {
+    if (route.params?.updatedStaffList) {
+      // Update our local state so the screen redraws!
+      setCurrentStaff(route.params.updatedStaffList);
+
+      // Clear out the navigation parameter helper so it doesn't loop
+      navigation.setParams({ updatedStaffList: undefined });
+    }
+  }, [route.params?.updatedStaffList]);
+
   const getDepartmentName = (deptId) => {
+    // Add a quick fallback filter check just in case departments array is temporarily blank
+    if (!departments) return 'Unknown Department';
     const dept = departments.find((d) => d.id === String(deptId));
     return dept ? dept.name : 'Unknown Department';
   };
 
-  const filteredStaff = staffList.filter((member) => {
+  // Run the filter over your local state 'currentStaff' instead of the raw prop
+  const filteredStaff = currentStaff.filter((member) => {
     const query = searchQuery.toLowerCase();
     const staffName = (member.name || '').toLowerCase();
     const deptName = getDepartmentName(member.departmentId).toLowerCase();
@@ -28,6 +61,16 @@ export default function StaffDirectory({ navigation, staffList, departments }) {
 
   return (
     <View style={styles.container}>
+      {/* Check if we are in Web mode, as messages are designed to display only in Web mode*/}
+      {Platform.OS !== 'web' && (
+        <View style={styles.webWarningBanner}>
+          <Text style={styles.webWarningText}>
+            Optimization Warning: This app is optimized for Pure Web Mode.
+            Please switch your Snack preview tab to "Web" for perfect grid
+            snapping.
+          </Text>
+        </View>
+      )}
       <ImageBackground
         source={require('../assets/AppBackground.jpg')}
         style={styles.background}
@@ -72,24 +115,33 @@ export default function StaffDirectory({ navigation, staffList, departments }) {
         {/* Create a scrolling panel that scrolls the staff directory*/}
         <ScrollView
           style={styles.scrollPanel}
-          contentContainerStyle={styles.scrollContent}
+          // This allows us to present 2 columns when in tablet mode
+          contentContainerStyle={[
+            styles.scrollContent,
+            isTablet && {
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+            },
+          ]}
+          // Turn off snapping on tablet because 2 columns will break a single vertical 95px snap interval
           pagingEnabled={false}
-          snapToStart={true}
-          snapToEnd={true}
-          disableIntervalMomentum={true} // Stops the scroll from flying past multiple cards
-          snapToInterval={95} // Set the height of each interval for the scroll
-          decelerationRate="fast"
-          snapToAlignment="start">
+          snapToInterval={isTablet ? null : 95}
+          decelerationRate={isTablet ? 'normal' : 'fast'}>
           {filteredStaff.length > 0 ? (
             filteredStaff.map((item) => (
               <Pressable
                 key={item.id}
-                style={styles.card}
+                // Force a slightly reduced width for the card, so 2 can fit on a tablet screen
+                style={[
+                  styles.card,
+                  isTablet && { width: '48%', marginBottom: 15 },
+                ]}
                 onPress={() =>
                   navigation.navigate('UpdateStaff', {
                     employeeId: item.id,
                     departments: departments,
-                    staffList: staffList,
+                    staffList: currentStaff,
                   })
                 }>
                 <Text style={styles.cardTextName}>{item.name}</Text>
@@ -100,12 +152,12 @@ export default function StaffDirectory({ navigation, staffList, departments }) {
               </Pressable>
             ))
           ) : (
+            // A special display if no results found from search
             <View style={styles.noResultsCard}>
               <Text style={styles.noResultsText}>No matching staff found.</Text>
             </View>
           )}
         </ScrollView>
-
         {/* Add Staff button */}
         <Pressable
           style={styles.button}
@@ -113,6 +165,7 @@ export default function StaffDirectory({ navigation, staffList, departments }) {
             navigation.navigate('UpdateStaff', {
               employeeId: null,
               departments: departments,
+              staffList: currentStaff,
             })
           }>
           <Text style={styles.buttonText}>Add Staff</Text>
@@ -146,13 +199,13 @@ const styles = StyleSheet.create({
   },
 
   icon: {
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
   },
 
   logo: {
-    width: 316,
-    height: 165,
+    width: 300,
+    height: 157,
   },
 
   title: {
@@ -206,7 +259,7 @@ const styles = StyleSheet.create({
     tintColor: '#fff',
   },
 
-   scrollPanel: {
+  scrollPanel: {
     maxHeight: 475,
     flexGrow: 0,
     marginBottom: 15,
@@ -269,5 +322,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 20,
+  },
+  webWarningBanner: {
+    backgroundColor: '#ffcc00', // Eye-catching warning yellow
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: '#e6b800',
+  },
+
+  webWarningText: {
+    color: '#333', // Dark text for high contrast readability
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 16,
   },
 });
